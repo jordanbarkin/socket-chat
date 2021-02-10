@@ -3,7 +3,7 @@
 
 Each message in our wire protocol will have the following fields. Field names in **bold** and lengths in bytes *italicized*.
 
-**version number** *4* | **message type** *4* | **payload len** *4* | **message payload** *len*
+**version number** *4* | **message type** *4* | **message payload** *len*
 
 ## Version Number
 
@@ -25,7 +25,7 @@ server to client messages.
   * **empty** *0*
 * Here (Type = 1)
   * Used to indicate presence of a client. Clients marked as "here" will recieve messages as soon as they are sent.
-  * **username_len** *4*| **username** *len* 
+  * **username_len** *4* | **username** *len* 
 
 * Create Account (Type = 2)
   * Used to create a new user account. Note that we don't have a password requirement for here or create account. This chat
@@ -53,5 +53,16 @@ server to client messages.
   * **empty** *0*
 
 ### Server to Client Messages
-
+* Pong (Type = 9)
+  * Response to ping
+  * **empty** *0*
+* Undelivered Messages (Type = 10)
+  * List of underlivered messages recieved when client is "away"
+  * **number of messages** *4* | **message1** | **message2** | ...
+  * Each message is structured as 
+  **sender length** *4* | **sender username** *len* | **body length** *4* | **message body** *len*
+* Response to poll (Type = 11)
+  * Contains any undelivered messages recieved when client is "here"
+  * Same structure as undelivered messages
+    
     
