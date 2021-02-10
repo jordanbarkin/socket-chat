@@ -3,9 +3,11 @@
 
 Each message in our wire protocol will have the following fields. Field lengths are specified below field name.
 
--------------------------------------------------------------
+=============================================================
 version number | message type | payload len | message payload
+=============================================================
 (4 bytes)      |(4 bytes)     | (4 bytes)   | (len bytes)
+=============================================================
 
 ## Version Number
 
