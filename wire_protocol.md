@@ -6,7 +6,6 @@ Each message in our wire protocol will have the following fields. Field lengths 
 -------------------------------------------------------------
 version number | message type | payload len | message payload
 (4 bytes)      |(4 bytes)     | (4 bytes)   | (len bytes)
--------------------------------------------------------------
 
 ## Version Number
 
