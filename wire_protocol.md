@@ -22,38 +22,35 @@ server to client messages.
 
 * Ping (Type = 0)
   * Used for debugging purposes to check liveness
-  * Empty Payload
+  * **empty** *0*
 * Here (Type = 1)
   * Used to indicate presence of a client. Clients marked as "here" will recieve messages as soon as they are sent.
-  * username_len (4)| username (len) 
+  * **username_len** *4*| **username** *len* 
 
 * Create Account (Type = 2)
   * Used to create a new user account. Note that we don't have a password requirement for here or create account. This chat
     application is very insecure.
-  * username_len (4)   | username (len)
+  * **username_len** *4* | **username** *len*
   
 * Away (Type = 3)
   * Used to terminate a session with the server. Server will close the connection and mark the client as "away." Messages sent 
     during an "away" period will be recieved when the client is "here" again.
-  * Empty payload
+  * **empty** *0*
 * Chat Send (Type = 4)
   * Used to send a chat to another user. 
-  * ----------------------------------------------------------
-    reciever_len | reciever username | body_len | message body
-    (4 bytes)    |(len bytes)        | (4 bytes)| (len bytes)
-    ---------------------------------------------------------
+  * **reciever length** *4* | **reciever username** *len* | **body length** *4* | **message body** *len*
 * List Users (Type = 5)
   * Used to ask server for list of user accounts
-  * Empty payload
+  * **empty** *0*
 * Delete Account (Type = 6)
   * Delete the current "here" account. Server does nothing if the client is not "here." Note that the server is stateful.
-  * Empty payload
+  * **empty** *0*
 * Show Undelivered Messages (Type = 7)
   * Ask server to send messages delivered while ths currently "here" user was "away"
-  * Empty payload
+  * **empty** *0*
 * Poll (Type = 8)
   * Used to constantly poll the server and notify of client liveness
-  * Empty payload
+  * **empty** *0*
 
 ### Server to Client Messages
 
