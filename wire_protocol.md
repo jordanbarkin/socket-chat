@@ -26,12 +26,10 @@ server to client messages.
 * Here (Type = 1)
   * Used to indicate presence of a client. Clients marked as "here" will recieve messages as soon as they are sent.
   * **username_len** *4* | **username** *len* 
-
 * Create Account (Type = 2)
   * Used to create a new user account. Note that we don't have a password requirement for here or create account. This chat
     application is very insecure.
   * **username_len** *4* | **username** *len*
-  
 * Away (Type = 3)
   * Used to terminate a session with the server. Server will close the connection and mark the client as "away." Messages sent 
     during an "away" period will be recieved when the client is "here" again.
