@@ -1,9 +1,9 @@
 
 # Wire Protocol Description (Version 1)
 
-Each message in our wire protocol will have the following fields. Field lengths in bytes are specified.
+Each message in our wire protocol will have the following fields. Field names in **bold** and lengths in bytes *italicized*.
 
-version number (4) | message type (4) | payload len (4) | message payload (len)
+**version number** *4* | **message type** *4* | **payload len** *4* | **message payload** *len*
 
 ## Version Number
 
