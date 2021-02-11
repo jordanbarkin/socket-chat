@@ -46,21 +46,16 @@ server to client messages.
 * Show Undelivered Messages (Type = 7)
   * Ask server to send messages delivered while ths currently "here" user was "away"
   * **empty** *0*
-* Poll (Type = 8)
-  * Used to constantly poll the server and notify of client liveness
-  * **empty** *0*
 
 ### Server to Client Messages
 * Pong (Type = 9)
   * Response to ping
   * **empty** *0*
-* Undelivered Messages (Type = 10)
-  * List of underlivered messages recieved when client is "away"
+* Messages Send (Type = 10)
+  * List of messages in respose to a new message or a Show Undelivered Messages request
   * **number of messages** *4* | **message1** | **message2** | ...
   * Each message is structured as 
   **sender length** *4* | **sender username** *len* | **body length** *4* | **message body** *len*
-* Response to poll (Type = 11)
-  * Contains any undelivered messages recieved when client is "here"
-  * Same structure as undelivered messages
+
     
     
