@@ -2,7 +2,7 @@
 
 import socket
 import threading 
-import userstate
+from userstate import *
 from messages import * 
 
 HOST = 'localhost'
@@ -26,12 +26,12 @@ def thread_func(conn):
             
             # exception will be raised if no data is available before the timeout
             try:
-                message = conn.recv(4096)
+                raw_message = conn.recv(4096)
             except socket.timeout:
                 None
            
             # message length does not include headers
-            message_len = extract_len(message)
+            message_len = extract_length(raw_message)
             current_len = len(raw_message)
             
             # loop until we recieve the whole message
@@ -40,7 +40,7 @@ def thread_func(conn):
                 current_len += len(data)
                 raw_message += data
             
-            message = messages.deserialize_message(raw_message)
+            message = deserialize_message(raw_message)
             message_type = type(message)
            
             # process message, switching on type
@@ -48,9 +48,9 @@ def thread_func(conn):
                 response = PongMessage()
                 conn.send(response.serialize())
             # users need to be "here" to use most features
-            elif not user and (message_type not in [CreateAccountMessage, AwayMessage, HereMessage]):
-                response = ErrorMessage()
-                conn.send(response.seralize())
+            elif not user and (message_type not in [CreateAccountMessage, HereMessage]):
+                response = ErrorMessage("must be logged in to do that")
+                conn.send(response.serialize())
             # similar to a login method, except that our server does not authenticate users :O
             elif message_type == HereMessage:
                 user = message.username
