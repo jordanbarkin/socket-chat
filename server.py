@@ -73,6 +73,9 @@ def thread_func(conn):
                 user = message.username
                 users.update({user: UserState(user)})
                 users[user].here = True
+                # persistent storage 
+                with (open("users.txt", "w+")) as f:
+                    f.write(user)
             # again, like a logout without authentication
             elif message_type == AwayMessage:
                 if user in users:
@@ -108,6 +111,13 @@ def thread_func(conn):
 
 
 if __name__ == '__main__':
+
+    with open("users.txt", "r") as f:
+        lines = f.readlines()
+        for line in lines:
+            username = line.strip()
+            users.update({username: UserState(username)})
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
         s.bind((HOST, PORT))
