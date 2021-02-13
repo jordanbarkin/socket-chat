@@ -24,16 +24,15 @@ def thread_func(conn):
     with conn:
         while True:
             
-            # exception will be raised if no data is available before the timout
+            # exception will be raised if no data is available before the timeout
             try:
                 message = conn.recv(4096)
             except socket.timeout:
                 None
            
-            message_len = int.from_bytes(raw_message[8:13])
-
-            # message length does not include header length
-            current_len = len(raw_message - 12)
+            # message length does not include headers
+            message_len = extract_len(message)
+            current_len = len(raw_message)
             
             # loop until we recieve the whole message
             while current_len < message_len:
@@ -43,57 +42,61 @@ def thread_func(conn):
             
             message = messages.deserialize_message(raw_message)
             message_type = type(message)
-            # logic to process a message and then respond appropriately
-            # call jordan's library to derserialize the message
-            
-            if (message_type == PingMessage):
+           
+            # process message, switching on type
+            if message_type == PingMessage:
                 response = PongMessage()
                 conn.send(response.serialize())
-            else if not user and (message_type not in [CreateAccountMessage, AwayMessage, HereMessage]):
+            # users need to be "here" to use most features
+            elif not user and (message_type not in [CreateAccountMessage, AwayMessage, HereMessage]):
                 response = ErrorMessage()
                 conn.send(response.seralize())
-            else if message_type == HereMessage:
+            # similar to a login method, except that our server does not authenticate users :O
+            elif message_type == HereMessage:
                 user = message.username
-            else if message_type == CreateAccountMessage:
+            # the user is also automatically marked as "here" for the newly created account
+            elif message_type == CreateAccountMessage:
                 user = message.username
-                users.update({user: })
-              # should have message type here or create account 
-                print("TODO")
-              # set user to username 
-            else:
-                # switch on message type and process appropriately
-                # create account
-                # here 
-                # away
-                # email send -> bulk of work
-                # ping 
-                # list clients 
-                # delete account 
-                # show undelivered messages
-                print("hi")
+                users.update({user: UserState(user)})
+            # again, like a logout without authentication
+            elif message_type == AwayMessage:
+                user = None
+                users[user].here = False
+            # will be delivered immediately or on demand depending on target's "here" status
+            # note that add_message handles that logic
+            elif message_type == SendChatMessage:
+                target = message.username
+                users[target].add_message((target, message.body))
+            elif message_type == RequestUserListMessage:
+                response = UserListResponseMessage(users.keys())
+                conn.send(response.serialize())
+            # you can only delete yourself for security reasons
+            elif message_type == DeleteAccountMessage:
+                if not user: 
+                    conn.send(ErrorMessage("must be here to delete account").serialize())
+                else:
+                    users.pop(user)
+                    user = None
+            # note that we deliver undelivered messages recieved both while the user was 
+            # "away" and "here"
+            elif message_type == ShowUndeliveredMessage:
+                messages = []
+                while not users[user].deliver_later.empty():
+                    messages.append(users[user].deliver_later.get())
+                while not users[user].deliver_now.empty():
+                    messages.append(users[user].deliver_now.get())
+                response = DeliverMessage(messages)
+                conn.send(response.serialize)
 
             # deliver any messages in the queue 
+            messages = []
             while not users[user].deliver_now.empty():
-                message = users[user].deliver_now.get()
+                messages.append(users[user].deliver_now.get())
 
-                # in case of failure, put the message back on the queue to avoid
-                # message drops. note that the message will now be at the end of 
-                # the queue, so our server does not guarantee in-order message
-                # delivery.
-
-                # i'm worried that this call might timeout too bc conn.timeout(0.5)
-                # not sure if sends will also timeout?????????
-                try:
-                    conn.sendall(message)
-                except e:
-                    users[user].deliver_now.put(message)
+            conn.sendall(DeliverMessage(messages).serialize())
 
 
 if __name__ == '__main__':
-    print(type(3))
-    print(type(3) == int)
-
-def ugh():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
         s.bind((HOST, PORT))

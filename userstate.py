@@ -21,10 +21,12 @@ class UserState:
            queue of messages to be delivered on-demand when the user is "here." These
            are messages that were received when the user was "away." 
 
-       @method add_message: message: str -> None
+       @method add_message: message: (str, str) -> None
            add a message to the appropriate queue depending on whether or not the 
-           user is "here" other will be used by other threads to send messages to 
-           this user
+           user is "here" Will be used by other threads to send messages to 
+           this user. 
+           @param: (sender, body) a tuple consisting of the sender's username and the 
+                   message body
 
        @notes
            Note that UserState has no memory of past messages. Both message queue 
@@ -51,7 +53,7 @@ class UserState:
         self.deliver_now = queue.Queue()
         self.deliver_later = queue.Queue()
 
-    def add_message(self, message: str):
+    def add_message(self, message: (str,str)):
         '''Other user threads call this method to add a message to this user's queue.
            Note a possible race condition: if self.here changes between method invocation 
            and method exceution then the message may be pushed onto the wrong queue. We 
