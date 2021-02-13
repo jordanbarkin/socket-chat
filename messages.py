@@ -20,6 +20,7 @@ SHOW_UNDELIVERED_MESSAGE_ID  = 7
 # Server Message IDs
 DELIVER_MESSAGE_ID           = 10
 
+# Packing/unpacking helpers
 def pack_int(val):
     return struct.Struct("I").pack(val)
 
@@ -35,6 +36,7 @@ def unpack_string(buf):
     result = rest[:length]
     return result, rest[length:]
 
+# Base message abstract class
 class Message(ABC):
     @classmethod
     def deserialize(cls, raw : bytes) -> Message:
@@ -55,12 +57,7 @@ class PongMessage(Message):
     def __init__(self):
         self.message_type = PONG_MESSAGE_ID
 
-# Messages sent from client to server
-class ClientMessage(Message, ABC):
-    def serialize(self):
-        pass
-
-class HereMessage(ClientMessage):
+class HereMessage(Message):
     def __init__(self, username):
         self.message_type = HERE_MESSAGE_ID
         self.username = username
@@ -73,7 +70,7 @@ class HereMessage(ClientMessage):
     def serialize(self) -> bytes:
         return self.pack_header + pack_string(self.username)
 
-class CreateAccountMessage(ClientMessage):
+class CreateAccountMessage(Message):
     def __init__(self, username):
         self.message_type = CREATE_ACCOUNT_MESSAGE_ID
         self.username = username
@@ -86,11 +83,11 @@ class CreateAccountMessage(ClientMessage):
     def serialize(self) -> bytes:
         return self.pack_header() + pack_string(self.username)
 
-class AwayMessage(ClientMessage):
+class AwayMessage(Message):
     def __init__(self):
         self.message_type = AWAY_MESSAGE_ID
 
-class SendChatMessage(ClientMessage):
+class SendChatMessage(Message):
     def __init__(self, username, body):
         self.message_type = SEND_CHAT_MESSAGE_ID
         self.username = username
@@ -105,38 +102,44 @@ class SendChatMessage(ClientMessage):
     def serialize(self) -> bytes:
         return self.pack_header() + pack_string(self.username) + pack_string(self.body)
 
-class RequestUserListMessage(ClientMessage):
+class RequestUserListMessage(Message):
     def __init__(self):
         self.message_type = REQUEST_USER_LIST_MESSAGE_ID
 
-class DeleteAccountMessage(ClientMessage):
+class DeleteAccountMessage(Message):
     def __init__(self):
         self.message_type = DELETE_ACCOUNT_MESSAGE_ID
 
-class ShowUndeliveredMessage(ClientMessage):
+class ShowUndeliveredMessage(Message):
     def __init__(self):
         self.message_type = SHOW_UNDELIVERED_MESSAGE_ID
 
-# Messages sent from server to client
-class ServerMessage(Message, ABC):
-    pass
-
-class DeliverMessage(ServerResponse):
-    def __init__(self, message_list):
+class DeliverMessage(Message):
+    def __init__(self, message_list : tuple[str, str]):
         self.message_type = DELIVER_MESSAGE_ID
         self.message_list = message_list
 
     @classmethod
     def deserialize(cls, raw : bytes) -> Message:
-        username, rest = unpack_string(raw)
-        body, _ = unpack_string(rest)
-        return cls(username, body)
+        num_messages, rest = unpack_int(raw)
+
+        messages = []
+
+        for i in range(num_messages):
+            sender, rest = unpack_string(rest)
+            body, rest = unpack_string(rest)
+            messages += (sender, body)
+
+        return cls(messages)
 
     def serialize(self) -> bytes:
-        result = self.pack_header() +
-               pack_int(len(self.message_list))
+        result = self.pack_header() + pack_int(len(self.message_list))
 
-        for message in
+        for sender, body in message_list
+            result += pack_string(sender)
+            result += pack_string(body)
+
+        return result
 
 # All instantiatable message types
 message_classes = [
@@ -155,27 +158,32 @@ message_classes = [
 
 # Map message classes to their identifiers
 id_to_class_table = { cls.message_type, cls for cls in message_classes }
-class_to_id_table = { v : k for k, v in id_to_class_table.items() }
 
 def deserialize_message(raw_bytes) -> Message:
+
+    # version number must be present
     try:
         version_num, raw_bytes = unpack_int(raw_bytes)
     except:
         raise Exception("Deserialize message failed: no version number present.")
 
+    # version number must be correct
     if version_num != PROTOCOL_VERSION_NUMBER:
         raise Exception("Deserialize message failed: different protocol version numbers")
 
+    # message id must be present
     try:
         message_id, raw_bytes = unpack_int(raw_bytes)
     except:
         raise Exception("Deserialize message failed: no message id present.")
 
+    # message id must have a class
     try:
         TargetClass = id_to_class_table[message_id]
     except:
         raise Exception("Deserialize message failed: invalid message type.")
 
+    # deserialize with correct class
     return TargetClass.deserialize(raw_bytes)
 
 
