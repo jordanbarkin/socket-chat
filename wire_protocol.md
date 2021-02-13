@@ -61,6 +61,9 @@ server to client messages.
   * **number of users** *4* | **user1** | **user2** | .......
   * Each user is structures as
   * **username length** *4* | **username** *len* 
+* Error (Type = 12)
+  * Error message
+  * **error length** *4* | **error message** *len*
 
     
     
