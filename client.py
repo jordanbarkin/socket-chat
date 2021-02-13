@@ -158,14 +158,14 @@ def socket_loop(sock):
 
                 message_object = messages.deserialize_message(message)
                 message_type = type(message_object)
-                if message_type == message.PongMessage:
+                if message_type == messages.PongMessage:
                     print("Pong message received!")
-                elif message_type == message.UserListResponseMessage:
+                elif message_type == messages.UserListResponseMessage:
                     print("These are the users!:")
                     for user in message_object.user_list:
                         print(user)
                     print()
-                elif message_type == message.DeliverMessage:
+                elif message_type == messages.DeliverMessage:
                     for message in message_object.message_list:
                         sender, body = message
                         print(f"Message from {sender}:")
