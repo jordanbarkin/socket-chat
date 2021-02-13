@@ -1,9 +1,15 @@
 import socket
 import threading
 import messages 
+import select
+import struct
+import queue
 
 HOST = "localhost"
 PORT = 12345
+
+message_queue = queue.Queue()
+kill_socket = False
 
 # Helper functions
 
@@ -35,21 +41,22 @@ def ping(_):
 # Logged out action functions
 
 def program_quit(_):
+    kill_socket = True
     exit("Goodbye!")
 
 def login(sock):
     username = input("What is your username?: ")
     payload = messages.HereMessage(username)
-    # TODO: Socket stuff
-    success = True
-    if success:
-        logged_in_loop(sock, username)
+    message_queue.put(payload.serialize())
+    logged_in_loop(username)
+    
 
 def create_account(sock):
     username = input("What do you want your username to be?: ")
     payload = messages.CreateAccountMessage(username)
-    # TODO: Socket stuff
-    logged_in_loop(sock, username)
+    message_queue.put(payload.serialize())
+    logged_in_loop(username)
+
 
 # Universal actions:
 PING = 20
@@ -70,31 +77,33 @@ LOGGED_OUT_ACTIONS = {
 
 # Logged in action functions
 
-def logout(sock):
+def logout():
     payload = messages.AwayMessage()
-    # TODO: Socket stuff
+    message_queue.put(payload.serialize())
     print("Logged out!")
-    logged_out_loop()
+    kill_socket = True
+    return True
 
-def chat_send(sock):
+def chat_send():
     receiver = input("Who do you want to send the message to?: ")
     print("Write your message below and press 'enter' to send:")
     message = input()
     payload = messages.SendChatMessage(receiver, message)
-    # TODO: Socket stuff
+    message_queue.put(payload.serialize())
     print("Message sent!")
+    return False
 
-def list_users(sock):
+def list_users():
     payload = messages.RequestUserListMessage()
-    # TODO: Socket stuff
-    response = b"raw bytes"
-    print(f"Users: {messages.UserListResponseMessage.deserialize(response)}")
+    message_queue.put(payload.serialize())
+    return False
 
-def delete_account(sock):
+def delete_account():
     payload = messages.DeleteAccountMessage()
-    # TODO: Socket stuff
+    message_queue.put(payload.serialize())
     print("Account deleted!")
-    logged_out_loop()
+    kill_socket = True
+    return True
 
 # Logged in actions
 LOGOUT = 1
@@ -110,7 +119,7 @@ LOGGED_IN_ACTIONS = {
     DELETE_ACCOUNT: delete_account,
 }
 
-def logged_in_loop(sock, username):
+def logged_in_loop(username):
     while True:
         print(f"You are logged in as {username}!")
         print(("What would you like to do now? Type '1' to log out, '2' to send a chat, "
@@ -118,9 +127,35 @@ def logged_in_loop(sock, username):
         action = collect_user_input(LOGGED_IN_ACTIONS)
         if action == -1:
             continue
-        LOGGED_IN_ACTIONS[action](sock)
-        
+        logout = LOGGED_IN_ACTIONS[action]()
+        if logout:
+            return
 
+def get_len(bytes):
+    return struct.unpack("I", bytes[8:12])[0]
+        
+def socket_loop(sock):
+    while True:
+        if kill_socket:
+            print("brb dying!")
+            sock.close()
+            return
+
+        # First send any messages on the queue.
+        while not message_queue.empty():
+            message = message_queue.get()
+            sock.send(message)
+
+        # This look to see if any showed up.
+        ready = select.select([sock], [], [], .5)
+        if ready[0]:
+            message = sock.recv(64)
+            if message:
+                message_len = get_len(message)
+                while len(message) < message_len:
+                    chunk = sock.recv(64)
+                    message += chunk
+                print(message)
 
 def logged_out_loop():
     while True:
@@ -130,11 +165,11 @@ def logged_out_loop():
         if action == -1:
             continue
         sock = None
-        if action in {login, create_account}:
-            print("Establishing connection with server...")
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((HOST, PORT))
-            print("Successfully connected to server!")
+        print("Establishing connection with server...")
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((HOST, PORT))
+        print("Successfully connected to server!")
+        threading.Thread(target=socket_loop, args=(sock,)).start()
         LOGGED_OUT_ACTIONS[action](sock)
 
 if __name__ == "__main__":
