@@ -19,47 +19,51 @@ SHOW_UNDELIVERED_MESSAGE_ID  = 7
 
 # Server Message IDs
 DELIVER_MESSAGE_ID           = 10
+USER_LIST_RESPONSE_ID        = 11
 
 # Packing/unpacking helpers
 def pack_int(val):
     return struct.Struct("I").pack(val)
 
 def pack_string(val):
-    return pack_int(len(val)) + val
+    return pack_int(len(val)) + str.encode(val)
 
 def unpack_int(buf):
     num = struct.unpack("I", buf[:4])
-    return num, buf[4:]
+    return num[0], buf[4:]
 
 def unpack_string(buf):
     length, rest = unpack_int(buf)
     result = rest[:length]
-    return result, rest[length:]
+    return result.decode(), rest[length:]
+
 
 # Base message abstract class
 class Message(ABC):
     @classmethod
-    def deserialize(cls, raw : bytes) -> Message:
+    def deserialize(cls, raw: bytes) -> Message:
         return cls()
 
     def pack_header(self) -> bytes:
         return pack_int(PROTOCOL_VERSION_NUMBER) + pack_int(self.message_type)
 
     def serialize(self) -> bytes:
-        return pack_header()
+        return self.pack_header()
+
 
 # For diagnostic purposes
 class PingMessage(Message):
-    def __init__(self):
-        self.message_type = PING_MESSAGE_ID
+    message_type = PING_MESSAGE_ID
+
 
 class PongMessage(Message):
-    def __init__(self):
-        self.message_type = PONG_MESSAGE_ID
+    message_type = PONG_MESSAGE_ID
+
 
 class HereMessage(Message):
+    message_type = HERE_MESSAGE_ID
+
     def __init__(self, username):
-        self.message_type = HERE_MESSAGE_ID
         self.username = username
 
     @classmethod
@@ -68,11 +72,13 @@ class HereMessage(Message):
         return cls(username)
 
     def serialize(self) -> bytes:
-        return self.pack_header + pack_string(self.username)
+        return super().pack_header() + pack_string(self.username)
+
 
 class CreateAccountMessage(Message):
+    message_type = CREATE_ACCOUNT_MESSAGE_ID
+
     def __init__(self, username):
-        self.message_type = CREATE_ACCOUNT_MESSAGE_ID
         self.username = username
 
     @classmethod
@@ -81,15 +87,17 @@ class CreateAccountMessage(Message):
         return cls(username)
 
     def serialize(self) -> bytes:
-        return self.pack_header() + pack_string(self.username)
+        return super().pack_header() + pack_string(self.username)
+
 
 class AwayMessage(Message):
-    def __init__(self):
-        self.message_type = AWAY_MESSAGE_ID
+    message_type = AWAY_MESSAGE_ID
+
 
 class SendChatMessage(Message):
+    message_type = SEND_CHAT_MESSAGE_ID
+
     def __init__(self, username, body):
-        self.message_type = SEND_CHAT_MESSAGE_ID
         self.username = username
         self.body = body
 
@@ -100,23 +108,25 @@ class SendChatMessage(Message):
         return cls(username, body)
 
     def serialize(self) -> bytes:
-        return self.pack_header() + pack_string(self.username) + pack_string(self.body)
+        return super().pack_header() + pack_string(self.username) + pack_string(self.body)
+
 
 class RequestUserListMessage(Message):
-    def __init__(self):
-        self.message_type = REQUEST_USER_LIST_MESSAGE_ID
+    message_type = REQUEST_USER_LIST_MESSAGE_ID
+
 
 class DeleteAccountMessage(Message):
-    def __init__(self):
-        self.message_type = DELETE_ACCOUNT_MESSAGE_ID
+    message_type = DELETE_ACCOUNT_MESSAGE_ID
+
 
 class ShowUndeliveredMessage(Message):
-    def __init__(self):
-        self.message_type = SHOW_UNDELIVERED_MESSAGE_ID
+    message_type = SHOW_UNDELIVERED_MESSAGE_ID
+
 
 class DeliverMessage(Message):
-    def __init__(self, message_list : tuple[str, str]):
-        self.message_type = DELIVER_MESSAGE_ID
+    message_type = DELIVER_MESSAGE_ID
+
+    def __init__(self, message_list : list[tuple[str, str]]):
         self.message_list = message_list
 
     @classmethod
@@ -133,17 +143,44 @@ class DeliverMessage(Message):
         return cls(messages)
 
     def serialize(self) -> bytes:
-        result = self.pack_header() + pack_int(len(self.message_list))
+        result = super().pack_header() + pack_int(len(self.message_list))
 
-        for sender, body in message_list
+        for sender, body in message_list:
             result += pack_string(sender)
             result += pack_string(body)
 
         return result
 
+
+class UserListResponseMessage(Message):
+    message_type = USER_LIST_RESPONSE_ID
+
+    def __init__(self, user_list : list[str]):
+        self.user_list = message_list
+
+    @classmethod
+    def deserialize(cls, raw : bytes) -> Message:
+        num_users, rest = unpack_int(raw)
+
+        users = []
+
+        for i in range(num_messages):
+            user, rest = unpack_string(rest)
+            users += user
+
+        return cls(users)
+
+    def serialize(self) -> bytes:
+        result = super().pack_header() + pack_int(len(self.message_list))
+
+        for user in self.user_list:
+            result += pack_string(user)
+
+
 # All instantiatable message types
 message_classes = [
     PingMessage,
+    PongMessage,
     HereMessage,
     CreateAccountMessage,
     AwayMessage,
@@ -151,16 +188,16 @@ message_classes = [
     RequestUserListMessage,
     DeleteAccountMessage,
     ShowUndeliveredMessage,
-    PongMessage,
-    ShowUndeliveredMessageResponse,
-    PollResponse
+    DeliverMessage,
+    UserListResponseMessage
 ]
 
+
 # Map message classes to their identifiers
-id_to_class_table = { cls.message_type, cls for cls in message_classes }
+id_to_class_table = { c.message_type: c for c in message_classes }
+
 
 def deserialize_message(raw_bytes) -> Message:
-
     # version number must be present
     try:
         version_num, raw_bytes = unpack_int(raw_bytes)
@@ -183,7 +220,8 @@ def deserialize_message(raw_bytes) -> Message:
     except:
         raise Exception("Deserialize message failed: invalid message type.")
 
-    # deserialize with correct class
-    return TargetClass.deserialize(raw_bytes)
-
+    try:
+        return TargetClass.deserialize(raw_bytes)
+    except:
+        raise Exception("Message payload does not match message type.")
 
