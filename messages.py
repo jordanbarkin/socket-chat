@@ -8,6 +8,7 @@ PROTOCOL_VERSION_NUMBER = 1
 PING_MESSAGE_ID              = 0
 PONG_MESSAGE_ID              = 9
 
+
 # Client Message IDs
 HERE_MESSAGE_ID              = 1
 CREATE_ACCOUNT_MESSAGE_ID    = 2
@@ -20,6 +21,7 @@ SHOW_UNDELIVERED_MESSAGE_ID  = 7
 # Server Message IDs
 DELIVER_MESSAGE_ID           = 10
 USER_LIST_RESPONSE_ID        = 11
+ERROR_MESSAGE_ID             = 12
 
 # Packing/unpacking helpers
 def pack_int(val):
@@ -47,8 +49,12 @@ class Message(ABC):
     def pack_header(self) -> bytes:
         return pack_int(PROTOCOL_VERSION_NUMBER) + pack_int(self.message_type)
 
+    def serialize_payload(self) -> int:
+        return b'' # no payload
+
     def serialize(self) -> bytes:
-        return self.pack_header()
+        payload = self.serialize_payload()
+        return self.pack_header() + pack_int(len(payload)) + payload
 
 
 # For diagnostic purposes
@@ -71,9 +77,8 @@ class HereMessage(Message):
         username, _ = unpack_string(raw)
         return cls(username)
 
-    def serialize(self) -> bytes:
-        return super().pack_header() + pack_string(self.username)
-
+    def serialize_payload(self) -> bytes:
+        return pack_string(self.username)
 
 class CreateAccountMessage(Message):
     message_type = CREATE_ACCOUNT_MESSAGE_ID
@@ -86,8 +91,8 @@ class CreateAccountMessage(Message):
         username, _ = unpack_string(raw)
         return cls(username)
 
-    def serialize(self) -> bytes:
-        return super().pack_header() + pack_string(self.username)
+    def serialize_payload(self) -> bytes:
+        return pack_string(self.username)
 
 
 class AwayMessage(Message):
@@ -107,8 +112,8 @@ class SendChatMessage(Message):
         body, _ = unpack_string(rest)
         return cls(username, body)
 
-    def serialize(self) -> bytes:
-        return super().pack_header() + pack_string(self.username) + pack_string(self.body)
+    def serialize_payload(self) -> bytes:
+        return pack_string(self.username) + pack_string(self.body)
 
 
 class RequestUserListMessage(Message):
@@ -142,15 +147,14 @@ class DeliverMessage(Message):
 
         return cls(messages)
 
-    def serialize(self) -> bytes:
-        result = super().pack_header() + pack_int(len(self.message_list))
+    def serialize_payload(self) -> bytes:
+        result = pack_int(len(self.message_list))
 
         for sender, body in self.message_list:
             result += pack_string(sender)
             result += pack_string(body)
 
         return result
-
 
 class UserListResponseMessage(Message):
     message_type = USER_LIST_RESPONSE_ID
@@ -170,12 +174,27 @@ class UserListResponseMessage(Message):
 
         return cls(users)
 
-    def serialize(self) -> bytes:
-        result = super().pack_header() + pack_int(len(self.message_list))
+    def serialize_payload(self) -> bytes:
+        result = pack_int(len(self.message_list))
 
         for user in self.user_list:
             result += pack_string(user)
 
+        return result
+
+class ErrorMessage(Message):
+    message_type = ERROR_MESSAGE_ID
+
+    def __init__(self, error_message):
+        self.error_message = error_message
+
+    @classmethod
+    def deserialize(cls, raw : bytes) -> Message:
+        error_message, _ = unpack_string(raw)
+        return cls(error_message)
+
+    def serialize_payload(self) -> bytes:
+        return pack_string(self.error_message)
 
 # All instantiatable message types
 message_classes = [
@@ -189,7 +208,8 @@ message_classes = [
     DeleteAccountMessage,
     ShowUndeliveredMessage,
     DeliverMessage,
-    UserListResponseMessage
+    UserListResponseMessage,
+    ErrorMessage
 ]
 
 
@@ -214,6 +234,11 @@ def deserialize_message(raw_bytes) -> Message:
     except:
         raise Exception("Deserialize message failed: no message id present.")
 
+    try:
+        payload_size, raw_bytes = unpack_int(raw_bytes)
+    except:
+        raise Exception("Payload size not present")
+
     # message id must have a class
     try:
         TargetClass = id_to_class_table[message_id]
@@ -224,5 +249,6 @@ def deserialize_message(raw_bytes) -> Message:
         return TargetClass.deserialize(raw_bytes)
     except:
         raise Exception("Message payload does not match message type.")
+
 
 
