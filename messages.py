@@ -170,14 +170,14 @@ class UserListResponseMessage(Message):
 
         users = []
 
-        for i in range(num_messages):
+        for i in range(num_users):
             user, rest = unpack_string(rest)
             users += user
 
         return cls(users)
 
     def serialize_payload(self) -> bytes:
-        result = pack_int(len(self.message_list))
+        result = pack_int(len(self.user_list))
 
         for user in self.user_list:
             result += pack_string(user)
