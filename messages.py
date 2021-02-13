@@ -162,7 +162,7 @@ class UserListResponseMessage(Message):
     message_type = USER_LIST_RESPONSE_ID
 
     def __init__(self, user_list : list[str]):
-        self.user_list = message_list
+        self.user_list = user_list
 
     @classmethod
     def deserialize(cls, raw : bytes) -> Message:
