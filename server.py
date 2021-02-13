@@ -35,12 +35,11 @@ def thread_func(conn):
             # exception will be raised if no data is available before the timeout
             try:
                 raw_message = conn.recv(4096)
-                print(raw_message)
             except socket.timeout:
                 continue
            
             # message length does not include headers
-            message_len = extract_length(raw_message)
+            message_len = extract_length(raw_message) + 12
             current_len = len(raw_message)
             
             # loop until we recieve the whole message
@@ -51,6 +50,7 @@ def thread_func(conn):
             
             message = deserialize_message(raw_message)
             message_type = type(message)
+            print(message_type)
            
             # process message, switching on type
             if message_type == PingMessage:
@@ -62,20 +62,29 @@ def thread_func(conn):
                 conn.send(response.serialize())
             # similar to a login method, except that our server does not authenticate users :O
             elif message_type == HereMessage:
+                try:
+                    users[message.username]
+                except:
+                    conn.send(ErrorMessage("user doesnt exist").serialize())
                 user = message.username
+                users[user].here = True
             # the user is also automatically marked as "here" for the newly created account
             elif message_type == CreateAccountMessage:
                 user = message.username
                 users.update({user: UserState(user)})
+                users[user].here = True
             # again, like a logout without authentication
             elif message_type == AwayMessage:
-                user = None
-                users[user].here = False
+                if user in users:
+                    users[user].here = False
+                    user = None
+                else:
+                    conn.send(ErrorMessage("you do not exist").serialize())
             # will be delivered immediately or on demand depending on target's "here" status
             # note that add_message handles that logic
             elif message_type == SendChatMessage:
-                target = message.username
-                users[target].add_message((target, message.body))
+                target = message.username.strip()
+                users[target].add_message((user, message.body))
             elif message_type == RequestUserListMessage:
                 response = UserListResponseMessage(users.keys())
                 conn.send(response.serialize())

@@ -60,7 +60,9 @@ class UserState:
            deem this race condition minor because the message will be still be delivered,
            it just may be delivered later than the sender will expect.
         '''
-        if self.logged_in:
-            deliver_now.put(message)
+        print("here: ", self.here)
+        if self.here:
+            print("here")
+            self.deliver_now.put(message)
         else:
-            deliver_later.put(message)
+            self.deliver_later.put(message)
