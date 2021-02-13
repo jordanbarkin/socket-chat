@@ -35,7 +35,7 @@ def collect_user_input(valid_actions):
 
 def ping(_):
     payload = messages.PingMessage()
-    # TODO: Socket stuff
+    message_queue.put(payload.serialize())
     print("Successfully reached server!")
 
 # Logged out action functions
@@ -85,7 +85,7 @@ def logout():
     return True
 
 def chat_send():
-    receiver = input("Who do you want to send the message to?: ")
+    receiver = input("Who do you want to send the message to?: ").strip()
     print("Write your message below and press 'enter' to send:")
     message = input()
     payload = messages.SendChatMessage(receiver, message)
@@ -155,6 +155,27 @@ def socket_loop(sock):
                 while len(message) < message_len:
                     chunk = sock.recv(64)
                     message += chunk
+
+                message_object = messages.deserialize_message(message)
+                message_type = type(message_object)
+                if message_type == message.PongMessage:
+                    print("Pong message received!")
+                elif message_type == message.UserListResponseMessage:
+                    print("These are the users!:")
+                    for user in message_object.user_list:
+                        print(user)
+                    print()
+                elif message_type == message.DeliverMessage:
+                    for message in message_object.message_list:
+                        sender, body = message
+                        print(f"Message from {sender}:")
+                        print(body)
+                        print()
+                else:
+                    # Error message
+                    print("Error!", message_object.error_message)
+
+
                 print(message)
 
 def logged_out_loop():
