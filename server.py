@@ -24,11 +24,19 @@ def thread_func(conn):
     with conn:
         while True:
             
+            # deliver any messages in the queue 
+            messages = []
+            while user and not users[user].deliver_now.empty():
+                messages.append(users[user].deliver_now.get())
+
+            conn.sendall(DeliverMessage(messages).serialize())
+
             # exception will be raised if no data is available before the timeout
             try:
                 raw_message = conn.recv(4096)
+                print(raw_message)
             except socket.timeout:
-                None
+                continue
            
             # message length does not include headers
             message_len = extract_length(raw_message)
@@ -87,13 +95,6 @@ def thread_func(conn):
                     messages.append(users[user].deliver_now.get())
                 response = DeliverMessage(messages)
                 conn.send(response.serialize)
-
-            # deliver any messages in the queue 
-            messages = []
-            while not users[user].deliver_now.empty():
-                messages.append(users[user].deliver_now.get())
-
-            conn.sendall(DeliverMessage(messages).serialize())
 
 
 if __name__ == '__main__':
