@@ -39,6 +39,8 @@ def unpack_string(buf):
     result = rest[:length]
     return result.decode(), rest[length:]
 
+def extract_length(buf):
+    return struct.unpack("I", buf[8:12])[0]
 
 # Base message abstract class
 class Message(ABC):
