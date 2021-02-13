@@ -138,14 +138,14 @@ class DeliverMessage(Message):
         for i in range(num_messages):
             sender, rest = unpack_string(rest)
             body, rest = unpack_string(rest)
-            messages += (sender, body)
+            messages.append((sender, body))
 
         return cls(messages)
 
     def serialize(self) -> bytes:
         result = super().pack_header() + pack_int(len(self.message_list))
 
-        for sender, body in message_list:
+        for sender, body in self.message_list:
             result += pack_string(sender)
             result += pack_string(body)
 
@@ -224,4 +224,5 @@ def deserialize_message(raw_bytes) -> Message:
         return TargetClass.deserialize(raw_bytes)
     except:
         raise Exception("Message payload does not match message type.")
+
 
