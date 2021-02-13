@@ -28,8 +28,9 @@ def thread_func(conn):
             messages = []
             while user and not users[user].deliver_now.empty():
                 messages.append(users[user].deliver_now.get())
-
-            conn.sendall(DeliverMessage(messages).serialize())
+            
+            if len(messages) != 0:
+                conn.sendall(DeliverMessage(messages).serialize())
 
             # exception will be raised if no data is available before the timeout
             try:
