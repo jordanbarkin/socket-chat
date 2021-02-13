@@ -3,7 +3,7 @@
 
 Each message in our wire protocol will have the following fields. Field names in **bold** and lengths in bytes *italicized*.
 
-**version number** *4* | **message type** *4* | **message payload** *len*
+**version number** *4* | **message type** *4* | **message len** *4* | **message payload** *len*
 
 ## Version Number
 
@@ -56,6 +56,11 @@ server to client messages.
   * **number of messages** *4* | **message1** | **message2** | ...
   * Each message is structured as 
   **sender length** *4* | **sender username** *len* | **body length** *4* | **message body** *len*
+* List of Users (Type = 11)
+  * List of users in response to a list users message
+  * **number of users** *4* | **user1** | **user2** | .......
+  * Each user is structures as
+  * **username length** *4* | **username** *len* 
 
     
     
