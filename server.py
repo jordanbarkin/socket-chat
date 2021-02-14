@@ -62,7 +62,7 @@ def handle_request(user, conn, message):
 
     # users need to be "here" to use most features
     elif not user and (message_type not in [CreateAccountMessage, HereMessage]):
-        send_error_message("Please log in or create an account before making requests.")
+        send_error_message(conn, "Please log in or create an account before making requests.")
 
     # similar to a login method, except that our server does not authenticate users :O
     elif message_type == HereMessage:
@@ -71,7 +71,7 @@ def handle_request(user, conn, message):
             user = message.username
             users[user].login()
         except:
-            send_error_message("Account does not exist.")
+            send_error_message(conn, "Account does not exist.")
 
     # the user is also automatically marked as "here" for the newly created account
     elif message_type == CreateAccountMessage:
@@ -80,8 +80,8 @@ def handle_request(user, conn, message):
         users[user].login()
 
         # add to permanent acccount list
-        with (open("users.txt", "w+")) as f:
-            f.write(user)
+        with (open("users.txt", "a+")) as f:
+            f.write(user + "\n")
 
     # again, like a logout without authentication
     elif message_type == AwayMessage:
@@ -89,7 +89,7 @@ def handle_request(user, conn, message):
             users[user].logout()
             user = None
         else:
-            send_error_message("Account does not exist")
+            send_error_message(conn, "Account does not exist")
 
     # will be delivered immediately or on demand depending on target's "here" status
     # note that add_message handles that logic
@@ -106,7 +106,7 @@ def handle_request(user, conn, message):
     # you can only delete yourself for security reasons
     elif message_type == DeleteAccountMessage:
         if not user:
-            send_error_message("Please log in to delete your account.")
+            send_error_message(conn, "Please log in to delete your account.")
         else:
             users.pop(user)
             user = None
@@ -145,7 +145,7 @@ def connection_thread(conn):
 
 
 def load_users(filename):
-    with open("users.txt", "r") as f:
+    with open(filename, "r") as f:
         lines = f.readlines()
         for line in lines:
             username = line.strip()
