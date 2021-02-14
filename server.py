@@ -15,6 +15,18 @@ PORT = 12345
 # we would add persistent state.
 users = {}
 
+# helper functions 
+
+# send all new messages to a user over the connection
+def send_new_messages(user, conn):
+    messages = []
+    while user and not users[user].deliver_now.empty():
+        messages.append(users[user].deliver_now.get())
+            
+        if len(messages) != 0:
+            conn.sendall(DeliverMessage(messages).serialize())
+
+
 def thread_func(conn):
 
     user = None
@@ -25,12 +37,7 @@ def thread_func(conn):
         while True:
             
             # deliver any messages in the queue 
-            messages = []
-            while user and not users[user].deliver_now.empty():
-                messages.append(users[user].deliver_now.get())
-            
-            if len(messages) != 0:
-                conn.sendall(DeliverMessage(messages).serialize())
+            send_new_messages(user, conn)
 
             # exception will be raised if no data is available before the timeout
             try:
@@ -64,10 +71,10 @@ def thread_func(conn):
             elif message_type == HereMessage:
                 try:
                     users[message.username]
+                    user = message.username
+                    users[user].here = True
                 except:
                     conn.send(ErrorMessage("user doesnt exist").serialize())
-                user = message.username
-                users[user].here = True
             # the user is also automatically marked as "here" for the newly created account
             elif message_type == CreateAccountMessage:
                 user = message.username
@@ -87,9 +94,11 @@ def thread_func(conn):
             # note that add_message handles that logic
             elif message_type == SendChatMessage:
                 target = message.username.strip()
+                print("target ", target)
                 users[target].add_message((user, message.body))
             elif message_type == RequestUserListMessage:
-                response = UserListResponseMessage(users.keys())
+                response = UserListResponseMessage(list(users.keys()))
+                print(list(users.keys()))
                 conn.send(response.serialize())
             # you can only delete yourself for security reasons
             elif message_type == DeleteAccountMessage:
@@ -103,11 +112,12 @@ def thread_func(conn):
             elif message_type == ShowUndeliveredMessage:
                 messages = []
                 while not users[user].deliver_later.empty():
+                    print("hi")
                     messages.append(users[user].deliver_later.get())
                 while not users[user].deliver_now.empty():
                     messages.append(users[user].deliver_now.get())
                 response = DeliverMessage(messages)
-                conn.send(response.serialize)
+                conn.send(response.serialize())
 
 
 if __name__ == '__main__':

@@ -2,12 +2,14 @@ import socket
 import threading
 import messages 
 import select
-import struct
 import queue
 import time
+from integration_tests import *
+import sys
 
 HOST = "localhost"
 PORT = 12345
+TESTING = False
 
 message_queue = queue.Queue()
 is_connected = False
@@ -17,20 +19,39 @@ username = None
 # Helper functions
 
 '''
+    wrapper function for testing purposes. same interface as input()  
+'''
+def input_wrapped(message=None):
+    if TESTING:
+        return input_test()
+    elif message:
+        return input(message)
+    else:
+        return input()
+
+'''
+    wrapped function for testing purposes. same interface as print()
+'''
+def print_wrapped(message=""):
+    if TESTING:
+        return test_output(message)
+    else:
+        return print(message)
+
+'''
     @param valid_actions: A dictionary mapping action code numbers to
     their associated functions
-
     @returns: -1 if there is an error and the action code if the input is
     valid
 '''
 def collect_user_input(valid_actions):
     try:
-        action = int(input().strip())
+        action = int(input_wrapped().strip())
     except ValueError:
-        print("It looks like you did not input an integer. Try again!\n")
+        print_wrapped("It looks like you did not input an integer. Try again!\n")
         return -1
     if action not in valid_actions:
-        print("It looks like you input an invalid number. Try again")
+        print_wrapped("It looks like you input an invalid number. Try again")
         return -1
     return action
 
@@ -48,7 +69,7 @@ def program_quit():
 def login():
     global logged_in
     global username
-    local_username = input("What is your username?: ")
+    local_username = input_wrapped("What is your username?: ")
     payload = messages.HereMessage(local_username)
     message_queue.put(payload.serialize())
     logged_in = True
@@ -58,7 +79,7 @@ def login():
 def create_account():
     global logged_in
     global username
-    local_username = input("What do you want your username to be?: ")
+    local_username = input_wrapped("What do you want your username to be?: ")
     payload = messages.CreateAccountMessage(local_username)
     message_queue.put(payload.serialize())
     logged_in = True
@@ -73,13 +94,15 @@ PING = 9
 LOGIN = 1
 CREATE_ACCOUNT = 2
 QUIT = 3
+name1 = "luke"
+name2 = "lavanya"
 
 LOGGED_OUT_ACTIONS = {
-    LOGIN: login,
-    CREATE_ACCOUNT: create_account,
-    QUIT: program_quit,
-    PING: ping
-}
+        LOGIN: login,
+        CREATE_ACCOUNT: create_account,
+        QUIT: program_quit,
+        PING: ping
+    }
 
 
 
@@ -89,16 +112,16 @@ def logout():
     global logged_in
     payload = messages.AwayMessage()
     message_queue.put(payload.serialize())
-    print("Logged out!")
+    print_wrapped("Logged out!")
     logged_in = False
 
 def chat_send():
-    receiver = input("Who do you want to send the message to?: ").strip()
-    print("Write your message below and press 'enter' to send:")
-    message = input()
+    receiver = input_wrapped("Who do you want to send the message to?: ").strip()
+    print_wrapped("Write your message below and press 'enter' to send:")
+    message = input_wrapped()
     payload = messages.SendChatMessage(receiver, message)
     message_queue.put(payload.serialize())
-    print("Message sent!")
+    print_wrapped("Message sent!")
 
 def list_users():
     payload = messages.RequestUserListMessage()
@@ -109,7 +132,7 @@ def delete_account():
     global logged_in
     payload = messages.DeleteAccountMessage()
     message_queue.put(payload.serialize())
-    print("Account deleted!")
+    print_wrapped("Account deleted!")
     logged_in = False
 
 def show_messages():
@@ -136,8 +159,8 @@ LOGGED_IN_ACTIONS = {
 
 def logged_in_sequence():
     global username
-    print(f"You are logged in as {username}!")
-    print(("What would you like to do now? Type '1' to log out, '2' to send a chat, "
+    print_wrapped(f"You are logged in as " + username + "!")
+    print_wrapped(("What would you like to do now? Type '1' to log out, '2' to send a chat, "
         "'3' to list all available users, '4' to delete your account, '5' to receive undelivered messages, and '9' to test connection. "))
     action = collect_user_input(LOGGED_IN_ACTIONS)
     if action != -1:
@@ -162,7 +185,7 @@ def socket_loop(sock):
                 sock.close()
                 is_connected = False
                 logged_in = False
-                print("Failed to receive data. Resetting connection.")
+                print_wrapped("Failed to receive data. Resetting connection.")
                 return
 
             if message:
@@ -174,14 +197,14 @@ def socket_loop(sock):
                         sock.close()
                         is_connected = False
                         logged_in = False
-                        print("Failed to receive data. Resetting connection.")
+                        print_wrapped("Failed to receive data. Resetting connection.")
                         return
                     message += chunk
 
                 try:
                     message_object = messages.deserialize_message(message)
                 except:
-                    print("Invalid message received. Closing program.")
+                    print_wrapped("Invalid message received. Closing program.")
                     sock.close()
                     is_connected = False
                     logged_in = False
@@ -189,41 +212,40 @@ def socket_loop(sock):
 
                 message_type = type(message_object)
                 if message_type == messages.PongMessage:
-                    print("Pong message received!")
+                    print_wrapped("Pong message received!")
                 elif message_type == messages.UserListResponseMessage:
-                    print("These are the users!:")
-                    print(message_object.user_list)
-                    print()
+                    print_wrapped("These are the users!:")
+                    print_wrapped(message_object.user_list)
+                    print_wrapped()
                 elif message_type == messages.DeliverMessage:
                     for message in message_object.message_list:
                         sender, body = message
-                        print(f"Message from {sender}:")
-                        print(body)
-                        print()
+                        print_wrapped(f"Message from " + sender + ":")
+                        print_wrapped(body)
+                        print_wrapped()
                 else:
                     # Error message
                     error_message = message_object.error_message
-                    print("Error!", error_message)
+                    print_wrapped("Error!", error_message)
                     logged_in = False
-                print(message)
 
 
 def logged_out():
     global is_connected
     if not is_connected:
-        print("Establishing connection with server...")
+        print_wrapped("Establishing connection with server...")
         sock = None
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect((HOST, PORT))
         except OSError:
-            print("Failure to connect!")
+            print_wrapped("Failure to connect!")
             program_quit()
         is_connected = True
         threading.Thread(target=socket_loop, args=(sock,)).start()
-        print("Successfully connected to server!")
-    print()
-    print(("Welcome to Sooper Chat! Type '1' to log in, '2' to "
+        print_wrapped("Successfully connected to server!")
+    print_wrapped()
+    print_wrapped(("Welcome to Sooper Chat! Type '1' to log in, '2' to "
             "create an account, '3' to quit, and '9' to ping (test connection)."))
     action = collect_user_input(LOGGED_IN_ACTIONS)
     if action != -1:
@@ -240,4 +262,6 @@ def main():
             logged_out()
 
 if __name__ == "__main__":
+    if (len(sys.argv) > 1 and sys.argv[1] == "-t"):
+        TESTING = True
     main()
