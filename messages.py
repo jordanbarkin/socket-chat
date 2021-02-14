@@ -172,7 +172,7 @@ class UserListResponseMessage(Message):
 
         for i in range(num_users):
             user, rest = unpack_string(rest)
-            users += user
+            users.append(user)
 
         return cls(users)
 
