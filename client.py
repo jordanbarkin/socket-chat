@@ -5,10 +5,11 @@ import select
 import queue
 import time
 from integration_tests import *
+import sys
 
 HOST = "localhost"
 PORT = 12345
-TESTING = True
+TESTING = False
 
 message_queue = queue.Queue()
 is_connected = False
@@ -18,7 +19,7 @@ username = None
 # Helper functions
 
 '''
-    wrapper function for testing purposes: 
+    wrapper function for testing purposes. same interface as input()  
 '''
 def input_wrapped(message=None):
     if TESTING:
@@ -28,6 +29,9 @@ def input_wrapped(message=None):
     else:
         return input()
 
+'''
+    wrapped function for testing purposes. same interface as print()
+'''
 def print_wrapped(message=""):
     if TESTING:
         return test_output(message)
@@ -258,4 +262,6 @@ def main():
             logged_out()
 
 if __name__ == "__main__":
+    if (len(sys.argv) > 1 and sys.argv[1] == "-t"):
+        TESTING = True
     main()
