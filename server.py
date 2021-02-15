@@ -85,9 +85,12 @@ def handle_request(user, conn, message):
     # similar to a login method, except that our server does not authenticate users :O
     elif message_type == HereMessage:
         try:
-            # users[message.username]
-            user = message.username
-            users[user].login()
+            if message.username not in users:
+                send_error_message(conn, "Account does not exist.")
+            else:
+                users[message.username]
+                user = message.username
+                users[user].login()
         except:
             send_error_message(conn, "Account does not exist.")
 
@@ -165,7 +168,14 @@ def connection_thread(conn):
             send_new_messages(user, conn)
 
             # process any new request from the client
-            request = read_message(conn)
+            try:
+                request = read_message(conn)
+            except:
+                print("Connection dropped. User logged out.")
+                if user:
+                    users[user].logout()
+                    user = None
+                return
 
             if request:
                 try:
@@ -198,9 +208,16 @@ if __name__ == '__main__':
         print("Server listening on", HOST, ":", PORT)
 
         while True:
-            conn, addr = s.accept()
+            try:
+                conn, addr = s.accept()
 
-            # spawn a new thread to handle each new connection to allow multiple simultaneous connections
-            # this allows the server to maintain state for each connection
-            threading.Thread(target=connection_thread, args=(conn,)).start()
+                # spawn a new thread to handle each new connection to allow multiple simultaneous connections
+                # this allows the server to maintain state for each connection
+                threading.Thread(target=connection_thread, args=(conn,)).start()
+
+            except Exception as e:
+                print("Connection error encountered with message: " + str(e.message))
+                print("Resumung.")
+
+
 

@@ -164,6 +164,8 @@ def logged_in_sequence():
         LOGGED_IN_ACTIONS[action]()
 
 def logout(sock):
+    global logged_in
+    global is_connected
     sock.close()
     is_connected = False
     logged_in = False
@@ -182,7 +184,7 @@ def read_message_bytes(sock):
     except OSError as e:
         logout(sock)
         print_wrapped("Failed to receive data. Resetting connection.")
-        return None
+        raise
 
     # if we haven't received a message, nothing to do
     if not message:
@@ -197,6 +199,7 @@ def read_message_bytes(sock):
             logout(sock)
             print_wrapped("Failed to receive data. Resetting connection.")
             return None
+            raise
         message += chunk
 
     return message
@@ -213,7 +216,10 @@ def socket_loop(sock):
             message = message_queue.get()
             sock.send(message)
 
-        message_bytes = read_message_bytes(sock)
+        try:
+            message_bytes = read_message_bytes(sock)
+        except OSError:
+            print_wrapped("Connection lost.")
 
         # Nothing new from the server.
         if not message_bytes:
@@ -252,7 +258,8 @@ def socket_loop(sock):
         # received an error
         elif message_type == messages.ErrorMessage:
             print_wrapped("Error received: " + str(message_object.error_message))
-            print_wrapped("If problems persist, please log out and log back in.")
+            logout(sock)
+            print_wrapped("You have been logged out to preserve state.")
 
         # Server is sending nonsense.
         else:
