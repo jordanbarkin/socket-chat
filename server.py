@@ -45,13 +45,23 @@ def read_message(conn):
         current_len += len(data)
         raw_message += data
 
-    return deserialize_message(raw_message)
+    try:
+        result = deserialize_message(raw_message)
+    except Exception as e:
+        print("Failed to deserialize message " + str(e.message))
+        return None
+
+    return result
 
 def send_error_message(conn, err_msg):
     response = ErrorMessage(err_msg)
     conn.send(response.serialize())
 
 def handle_request(user, conn, message):
+
+    def message_requires_logged_in(message_type):
+        return message_type not in [CreateAccountMessage, HereMessage]
+
     message_type = type(message)
 
     print("Received a " + str(message_type))
@@ -61,7 +71,7 @@ def handle_request(user, conn, message):
         conn.send(PongMessage().serialize())
 
     # users need to be "here" to use most features
-    elif not user and (message_type not in [CreateAccountMessage, HereMessage]):
+    elif not user and message_requires_logged_in(message_type):
         send_error_message(conn, "Please log in or create an account before making requests.")
 
     # similar to a login method, except that our server does not authenticate users :O
@@ -95,8 +105,12 @@ def handle_request(user, conn, message):
     # note that add_message handles that logic
     elif message_type == SendChatMessage:
         target = message.username.strip()
-        print("Received email for ", target)
-        users[target].add_message((user, message.body))
+
+        if target not in users:
+            send_error_message(conn, "Recipient user does not exist. Please try again.")
+        else:
+            print("Received email for ", target)
+            users[target].add_message((user, message.body))
 
     # send back a list of all users
     elif message_type == RequestUserListMessage:
@@ -124,6 +138,8 @@ def handle_request(user, conn, message):
 
         response = DeliverMessage(messages)
         conn.send(response.serialize())
+    else:
+        print("Unable to handle request.")
 
     return user
 
@@ -150,6 +166,7 @@ def load_users(filename):
         for line in lines:
             username = line.strip()
             users.update({username: UserState(username)})
+
 
 if __name__ == '__main__':
     # resume with users if file exists
