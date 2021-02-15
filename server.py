@@ -17,7 +17,8 @@ users = {}
 
 # helper functions
 
-# send all new messages to a user over the connection
+# send all new messages to a user over the connection by emptying the user's
+# deliver queue
 def send_new_messages(user, conn):
     messages = []
 
@@ -27,6 +28,8 @@ def send_new_messages(user, conn):
     if messages:
         conn.sendall(DeliverMessage(messages).serialize())
 
+# Read a complete message into a buffer, and deserialize it into its appropriate
+# subclass of message.
 def read_message(conn):
     # exception will be raised if no data is available before the timeout
     try:
@@ -53,20 +56,25 @@ def read_message(conn):
 
     return result
 
+# package and send <err_msg> to the client on conn
 def send_error_message(conn, err_msg):
     response = ErrorMessage(err_msg)
     conn.send(response.serialize())
 
+# handle a single request from the client.
 def handle_request(user, conn, message):
 
+    # Predicate for whether a message requires you to be logged in to
+    # use it.
     def message_requires_logged_in(message_type):
         return message_type not in [CreateAccountMessage, HereMessage]
 
     message_type = type(message)
-
     print("Received a " + str(message_type))
 
-    # process message, switching on type
+    # Next, we process the message, conditioning on type.
+
+    # Ping case
     if message_type == PingMessage:
         conn.send(PongMessage().serialize())
 
@@ -138,11 +146,14 @@ def handle_request(user, conn, message):
 
         response = DeliverMessage(messages)
         conn.send(response.serialize())
+
     else:
-        print("Unable to handle request.")
+        print("Unable to handle request. Invalid message type")
 
     return user
 
+# A per-user thread runs this loop to handle requests and dispatch new
+# server to client messages.
 def connection_thread(conn):
     user = None
 
@@ -157,9 +168,15 @@ def connection_thread(conn):
             request = read_message(conn)
 
             if request:
-                user = handle_request(user, conn, request)
+                try:
+                    user = handle_request(user, conn, request)
+                except:
+                    print("Failed to handle request for an unknown reason.")
 
-
+# Read the list of users from the user log and resume the server state
+# with those users.
+# Note that messsages, unlike user acccounts, do not persist across server
+# restarts.
 def load_users(filename):
     with open(filename, "r") as f:
         lines = f.readlines()
@@ -183,7 +200,7 @@ if __name__ == '__main__':
         while True:
             conn, addr = s.accept()
 
-            # spawn a new thread to handle each connection to allow multiple simultaneous connections
+            # spawn a new thread to handle each new connection to allow multiple simultaneous connections
             # this allows the server to maintain state for each connection
             threading.Thread(target=connection_thread, args=(conn,)).start()
 

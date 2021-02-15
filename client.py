@@ -152,6 +152,8 @@ LOGGED_IN_ACTIONS = {
     PING: ping
 }
 
+# The user flow when logged in.
+
 def logged_in_sequence():
     global username
     print_wrapped(f"You are logged in as " + username + "!")
@@ -199,18 +201,21 @@ def read_message_bytes(sock):
 
     return message
 
+# The listener thread runs this loop, checking for and handling
+# any new communication from the server.
 def socket_loop(sock):
     global logged_in
     global is_connected
 
     while True:
-        # First send any messages on the queue.
+        # First send any messages on the queue to the server.
         while not message_queue.empty():
             message = message_queue.get()
             sock.send(message)
 
         message_bytes = read_message_bytes(sock)
 
+        # Nothing new from the server.
         if not message_bytes:
             continue
 
@@ -222,7 +227,8 @@ def socket_loop(sock):
             logout(sock)
             return
 
-        # Handle messages from server
+        # Handle messages from server, depending on type.
+
         message_type = type(message_object)
 
         # received response to a ping
@@ -235,22 +241,24 @@ def socket_loop(sock):
             print_wrapped(message_object.user_list)
             print_wrapped()
 
-        # received messages!
+        # received messages
         elif message_type == messages.DeliverMessage:
             for message in message_object.message_list:
                 sender, body = message
                 print_wrapped(f"Message from " + sender + ":")
                 print_wrapped(body)
                 print_wrapped()
+
+        # received an error
         elif message_type == messages.ErrorMessage:
-            # Error message
             print_wrapped("Error received: " + str(message_object.error_message))
-            # print_wrapped("Logging out.")
-            # logged_in = False
+            print_wrapped("If problems persist, please log out and log back in.")
+
+        # Server is sending nonsense.
         else:
             print("Invalid message object.")
 
-
+# The user flow when logged out.
 def logged_out_sequence():
     global is_connected
     if not is_connected:
@@ -271,6 +279,7 @@ def logged_out_sequence():
     action = collect_user_input(LOGGED_IN_ACTIONS)
     if action != -1:
         LOGGED_OUT_ACTIONS[action]()
+
 
 def main():
     global logged_in
