@@ -57,13 +57,13 @@ def collect_user_input(valid_actions):
         return -1
     return action
 
-# Universal action functions
+# Handlers for functions that you can use when logged in or out
 
 def ping():
     payload = messages.PingMessage()
     message_queue.put(payload.serialize())
 
-# Logged out action functions
+# Handlers for requests from the user when logged out
 
 def program_quit():
     exit("Goodbye!")
@@ -104,7 +104,7 @@ LOGGED_OUT_ACTIONS = {
     PING: ping
 }
 
-# Logged in action functions
+# Handlers for requests from the user when logged in
 
 def logout():
     global logged_in
