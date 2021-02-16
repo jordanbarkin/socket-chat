@@ -15,6 +15,14 @@ To start the client, run the command
 
 ```python3 client.py```
 
+### Command Line Arguments:
+
+**-server** defaults to localhost
+
+**-port** defaults to 12345
+
+**-t** enable testing mode, described below 
+
 ## Testing
 
 **Integration Tests** These test end-to-end client to server and server to client interactions. To get started, 
