@@ -170,7 +170,8 @@ def connection_thread(conn):
             # process any new request from the client
             try:
                 request = read_message(conn)
-            except:
+            except Exception as e:
+                print(str(e))
                 print("Connection dropped. User logged out.")
                 if user:
                     users[user].logout()

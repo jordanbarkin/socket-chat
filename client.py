@@ -57,13 +57,13 @@ def collect_user_input(valid_actions):
         return -1
     return action
 
-# Handlers for functions that you can use when logged in or out
+# Universal action functions
 
 def ping():
     payload = messages.PingMessage()
     message_queue.put(payload.serialize())
 
-# Handlers for requests from the user when logged out
+# Logged out action functions
 
 def program_quit():
     exit("Goodbye!")
@@ -104,7 +104,7 @@ LOGGED_OUT_ACTIONS = {
     PING: ping
 }
 
-# Handlers for requests from the user when logged in
+# Logged in action functions
 
 def logout():
     global logged_in
@@ -164,8 +164,6 @@ def logged_in_sequence():
         LOGGED_IN_ACTIONS[action]()
 
 def logout(sock):
-    global logged_in
-    global is_connected
     sock.close()
     is_connected = False
     logged_in = False
@@ -184,7 +182,7 @@ def read_message_bytes(sock):
     except OSError as e:
         logout(sock)
         print_wrapped("Failed to receive data. Resetting connection.")
-        raise
+        return None
 
     # if we haven't received a message, nothing to do
     if not message:
@@ -199,7 +197,6 @@ def read_message_bytes(sock):
             logout(sock)
             print_wrapped("Failed to receive data. Resetting connection.")
             return None
-            raise
         message += chunk
 
     return message
@@ -216,10 +213,7 @@ def socket_loop(sock):
             message = message_queue.get()
             sock.send(message)
 
-        try:
-            message_bytes = read_message_bytes(sock)
-        except OSError:
-            print_wrapped("Connection lost.")
+        message_bytes = read_message_bytes(sock)
 
         # Nothing new from the server.
         if not message_bytes:
@@ -258,8 +252,7 @@ def socket_loop(sock):
         # received an error
         elif message_type == messages.ErrorMessage:
             print_wrapped("Error received: " + str(message_object.error_message))
-            logout(sock)
-            print_wrapped("You have been logged out to preserve state.")
+            print_wrapped("If problems persist, please log out and log back in.")
 
         # Server is sending nonsense.
         else:
