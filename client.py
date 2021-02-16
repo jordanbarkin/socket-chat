@@ -1,16 +1,18 @@
 import socket
 import threading
-import messages 
+import messages
 import select
 import queue
 import time
-from integration_tests import *
 import sys
+from integration_tests import *
 
+# Configuration
 HOST = "localhost"
 PORT = 12345
 TESTING = False
 
+# Global client state
 message_queue = queue.Queue()
 is_connected = False
 logged_in = False
@@ -19,7 +21,7 @@ username = None
 # Helper functions
 
 '''
-    wrapper function for testing purposes. same interface as input()  
+    wrapper function for testing purposes. same interface as input()
 '''
 def input_wrapped(message=None):
     if TESTING:
@@ -74,7 +76,7 @@ def login():
     message_queue.put(payload.serialize())
     logged_in = True
     username = local_username
-    
+
 
 def create_account():
     global logged_in
@@ -86,25 +88,21 @@ def create_account():
     time.sleep(.5)
     username = local_username
 
-
 # Universal actions:
-PING = 9
+PING           = 9
 
 # Logged out actions
-LOGIN = 1
+LOGIN          = 1
 CREATE_ACCOUNT = 2
-QUIT = 3
-name1 = "luke"
-name2 = "lavanya"
+QUIT           = 3
+
 
 LOGGED_OUT_ACTIONS = {
-        LOGIN: login,
-        CREATE_ACCOUNT: create_account,
-        QUIT: program_quit,
-        PING: ping
-    }
-
-
+    LOGIN: login,
+    CREATE_ACCOUNT: create_account,
+    QUIT: program_quit,
+    PING: ping
+}
 
 # Logged in action functions
 
@@ -126,7 +124,6 @@ def chat_send():
 def list_users():
     payload = messages.RequestUserListMessage()
     message_queue.put(payload.serialize())
-    
 
 def delete_account():
     global logged_in
@@ -138,8 +135,6 @@ def delete_account():
 def show_messages():
     payload = messages.ShowUndeliveredMessage()
     message_queue.put(payload.serialize())
-
-    
 
 # Logged in actions
 LOGOUT = 1
@@ -157,6 +152,8 @@ LOGGED_IN_ACTIONS = {
     PING: ping
 }
 
+# The user flow when logged in.
+
 def logged_in_sequence():
     global username
     print_wrapped(f"You are logged in as " + username + "!")
@@ -166,71 +163,103 @@ def logged_in_sequence():
     if action != -1:
         LOGGED_IN_ACTIONS[action]()
 
+def logout(sock):
+    sock.close()
+    is_connected = False
+    logged_in = False
+
+def read_message_bytes(sock):
+    # Look to see if any messages showed up.
+    ready = select.select([sock], [], [], .5)
+
+    # no message received
+    if not ready[0]:
+        return None
+
+    # read the first 64 bytes
+    try:
+        message = sock.recv(64)
+    except OSError as e:
+        logout(sock)
+        print_wrapped("Failed to receive data. Resetting connection.")
+        return None
+
+    # if we haven't received a message, nothing to do
+    if not message:
+        return None
+
+    # read the rest of the message
+    message_len = messages.extract_length(message)
+    while len(message) < message_len:
+        try:
+            chunk = sock.recv(64)
+        except OSError:
+            logout(sock)
+            print_wrapped("Failed to receive data. Resetting connection.")
+            return None
+        message += chunk
+
+    return message
+
+# The listener thread runs this loop, checking for and handling
+# any new communication from the server.
 def socket_loop(sock):
     global logged_in
     global is_connected
-    while True:
 
-        # First send any messages on the queue.
+    while True:
+        # First send any messages on the queue to the server.
         while not message_queue.empty():
             message = message_queue.get()
             sock.send(message)
 
-        # Look to see if any messages showed up.
-        ready = select.select([sock], [], [], .5)
-        if ready[0]:
-            try:
-                message = sock.recv(64)
-            except OSError as e:
-                sock.close()
-                is_connected = False
-                logged_in = False
-                print_wrapped("Failed to receive data. Resetting connection.")
-                return
+        message_bytes = read_message_bytes(sock)
 
-            if message:
-                message_len = messages.extract_length(message)
-                while len(message) < message_len:
-                    try:
-                        chunk = sock.recv(64)
-                    except OSError:
-                        sock.close()
-                        is_connected = False
-                        logged_in = False
-                        print_wrapped("Failed to receive data. Resetting connection.")
-                        return
-                    message += chunk
+        # Nothing new from the server.
+        if not message_bytes:
+            continue
 
-                try:
-                    message_object = messages.deserialize_message(message)
-                except:
-                    print_wrapped("Invalid message received. Closing program.")
-                    sock.close()
-                    is_connected = False
-                    logged_in = False
-                    return 
+        try:
+            message_object = messages.deserialize_message(message_bytes)
+        except Exception as e:
+            print_wrapped("Failed to deserialize message." + str(e.message))
+            print_wrapped("Invalid message received. Closing program.")
+            logout(sock)
+            return
 
-                message_type = type(message_object)
-                if message_type == messages.PongMessage:
-                    print_wrapped("Pong message received!")
-                elif message_type == messages.UserListResponseMessage:
-                    print_wrapped("These are the users!:")
-                    print_wrapped(message_object.user_list)
-                    print_wrapped()
-                elif message_type == messages.DeliverMessage:
-                    for message in message_object.message_list:
-                        sender, body = message
-                        print_wrapped(f"Message from " + sender + ":")
-                        print_wrapped(body)
-                        print_wrapped()
-                else:
-                    # Error message
-                    error_message = message_object.error_message
-                    print_wrapped("Error!", error_message)
-                    logged_in = False
+        # Handle messages from server, depending on type.
 
+        message_type = type(message_object)
 
-def logged_out():
+        # received response to a ping
+        if message_type == messages.PongMessage:
+            print_wrapped("Pong message received!")
+
+        # received a response to a request for a list of users
+        elif message_type == messages.UserListResponseMessage:
+            print_wrapped("These are the users!:")
+            print_wrapped(message_object.user_list)
+            print_wrapped()
+
+        # received messages
+        elif message_type == messages.DeliverMessage:
+            for message in message_object.message_list:
+                sender, body = message
+                print_wrapped(f"Message from " + sender + ":")
+                print_wrapped(body)
+                print_wrapped()
+
+        # received an error
+        elif message_type == messages.ErrorMessage:
+            print_wrapped("Error received: " + str(message_object.error_message))
+            print_wrapped("If problems persist, please log out and log back in.")
+
+        # Server is sending nonsense.
+        else:
+            print("Invalid message object.")
+
+# The user flow when logged out.
+def logged_out_sequence():
     global is_connected
     if not is_connected:
         print_wrapped("Establishing connection with server...")
@@ -251,17 +280,22 @@ def logged_out():
     if action != -1:
         LOGGED_OUT_ACTIONS[action]()
 
+
 def main():
     global logged_in
     global is_connected
+
     while True:
         time.sleep(1)
+
         if logged_in:
             logged_in_sequence()
         else:
-            logged_out()
+            logged_out_sequence()
 
 if __name__ == "__main__":
+    # enable test mode if -t flag is set
     if (len(sys.argv) > 1 and sys.argv[1] == "-t"):
         TESTING = True
+
     main()
