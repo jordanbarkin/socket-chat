@@ -5,6 +5,7 @@ import select
 import queue
 import time
 import sys
+import argparse
 from integration_tests import *
 
 # Configuration
@@ -164,13 +165,18 @@ def logged_in_sequence():
         LOGGED_IN_ACTIONS[action]()
 
 def logout(sock):
+    global logged_in
+    global is_connected
     sock.close()
     is_connected = False
     logged_in = False
 
 def read_message_bytes(sock):
     # Look to see if any messages showed up.
-    ready = select.select([sock], [], [], .5)
+    try:
+        ready = select.select([sock], [], [], .5)
+    except:
+        return None
 
     # no message received
     if not ready[0]:
@@ -252,7 +258,7 @@ def socket_loop(sock):
         # received an error
         elif message_type == messages.ErrorMessage:
             print_wrapped("Error received: " + str(message_object.error_message))
-            print_wrapped("If problems persist, please log out and log back in.")
+            print_wrapped("You may need to restart the client to resume normal behavior.")
 
         # Server is sending nonsense.
         else:
@@ -294,8 +300,19 @@ def main():
             logged_out_sequence()
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-server", help="Server IP address. Defaults to locahost.", default='localhost')
+    parser.add_argument("-port", help="Server port. Defaults to 12345.", default=12345)
+    parser.add_argument("-t", help="Run the test suite instead of the client.", action='store_true')
+    args = parser.parse_args()
+
+    HOST = str(args.server)
+    PORT = int(args.port)
+    print("Will connect to " + str(HOST) + ":" + str(PORT))
+
     # enable test mode if -t flag is set
-    if (len(sys.argv) > 1 and sys.argv[1] == "-t"):
+    if args.t:
+        print("Running tests.")
         TESTING = True
 
     main()
