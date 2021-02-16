@@ -84,25 +84,27 @@ def handle_request(user, conn, message):
 
     # similar to a login method, except that our server does not authenticate users :O
     elif message_type == HereMessage:
-        try:
-            if message.username not in users:
-                send_error_message(conn, "Account does not exist.")
-            else:
-                users[message.username]
-                user = message.username
-                users[user].login()
-        except:
+        if message.username not in users:
             send_error_message(conn, "Account does not exist.")
+        elif users[message.username].here:
+            send_error_messsage(conn, "You are logged in from a different device")
+        else: 
+            users[message.username]
+            user = message.username
+            users[user].login()
 
     # the user is also automatically marked as "here" for the newly created account
     elif message_type == CreateAccountMessage:
-        user = message.username
-        users.update({user: UserState(user)})
-        users[user].login()
+        if message.username in users and users[message.username].here:
+            send_error_message(conn, "You are logged in from a different device")
+        else:
+            user = message.username
+            users.update({user: UserState(user)})
+            users[user].login()
 
-        # add to permanent acccount list
-        with (open("users.txt", "a+")) as f:
-            f.write(user + "\n")
+            # add to permanent acccount list
+            with (open("users.txt", "a+")) as f:
+                f.write(user + "\n")
 
     # again, like a logout without authentication
     elif message_type == AwayMessage:
