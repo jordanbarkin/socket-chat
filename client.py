@@ -7,6 +7,7 @@ import time
 import sys
 import argparse
 from integration_tests import *
+import messages_unit_tests
 
 # Configuration
 HOST = "localhost"
@@ -312,7 +313,10 @@ if __name__ == "__main__":
 
     # enable test mode if -t flag is set
     if args.t:
-        print("Running tests.")
+        print("Running unit tests.")
+        messages_unit_tests.test_all()
+
+        print("Will run integration tests.")
         TESTING = True
 
     main()

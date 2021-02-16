@@ -6,10 +6,10 @@ To start the server, run the command
 
 ```python3 server.py```
 
-By default, the server runs on localhost on port 12345, so the client and server will need to be running on the same machine. 
+By default, the server runs on localhost on port 12345, so the client and server will need to be running on the same machine.
 
 
-## Running the client 
+## Running the client
 
 To start the client, run the command
 
@@ -21,11 +21,16 @@ To start the client, run the command
 
 **-port** defaults to 12345
 
-**-t** enable testing mode, described below 
+**-t** enable testing mode, described below
 
 ## Testing
 
-**Integration Tests** These test end-to-end client to server and server to client interactions. To get started, 
-run the server as described above, and then run the client with the '-t' flag as follows:
+Running with the test flag runs unit tests and integration tests.
+
+**Unit Tests** These test that for each type of message defined in messages.py, the result of deserializing the serialization of the message is identical to the original message. Equality on messages is defined in each message's class.
+
+**Integration Tests** These test end-to-end client to server and server to client interactions.
+
+To get started, run the server as described above, and then run the client with the '-t' flag as follows:
 
 ```python3 client.py -t```

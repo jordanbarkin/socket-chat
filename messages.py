@@ -2,7 +2,7 @@ from __future__ import annotations
 from abc import ABC
 import struct
 
-PROTOCOL_VERSION_NUMBER = 1
+PROTOCOL_VERSION_NUMBER      = 1
 
 # Diagnostic Message IDs
 PING_MESSAGE_ID              = 0
@@ -52,6 +52,7 @@ def extract_length(buf):
     return struct.unpack("I", buf[8:12])[0]
 
 # Base message abstract class
+# This can never be instantiated, but every message class extends this type.
 class Message(ABC):
     # Every Message subclass must provide a way to deserialize itself from
     # bytes sent over the network.
@@ -78,6 +79,10 @@ class Message(ABC):
         payload = self.serialize_payload()
         return self.pack_header() + pack_int(len(payload)) + payload
 
+    # For testing and validation, we want to be able to compare any two messages
+    def __eq__(self, obj):
+        return type(self) == type(obj) and self.message_type == obj.message_type
+
 # Represents an empty message that should be responded to with a PongMessage.
 class PingMessage(Message):
     message_type = PING_MESSAGE_ID
@@ -103,6 +108,11 @@ class HereMessage(Message):
     def serialize_payload(self) -> bytes:
         return pack_string(self.username)
 
+    def __eq__(self, obj):
+        return type(self) == type(obj) and \
+               self.message_type == obj.message_type and \
+               self.username == obj.username
+
 # Indicates that a user wants to create an account with name <username>.
 class CreateAccountMessage(Message):
     message_type = CREATE_ACCOUNT_MESSAGE_ID
@@ -117,6 +127,11 @@ class CreateAccountMessage(Message):
 
     def serialize_payload(self) -> bytes:
         return pack_string(self.username)
+
+    def __eq__(self, obj):
+        return type(self) == type(obj) and \
+               self.message_type == obj.message_type and \
+               self.username == obj.username
 
 # Logs a user out.
 class AwayMessage(Message):
@@ -138,6 +153,11 @@ class SendChatMessage(Message):
 
     def serialize_payload(self) -> bytes:
         return pack_string(self.username) + pack_string(self.body)
+
+    def __eq__(self, obj):
+        return type(self) == type(obj) and \
+               self.message_type == obj.message_type and \
+               self.body == obj.body
 
 # Server will reply with a UserListResponseMessage
 class RequestUserListMessage(Message):
@@ -181,6 +201,11 @@ class DeliverMessage(Message):
 
         return result
 
+    def __eq__(self, obj):
+        return type(self) == type(obj) and \
+               self.message_type == obj.message_type and \
+               self.message_list == obj.message_list
+
 # Reply to RequestUserListMessage
 # Contains a list of all users.
 class UserListResponseMessage(Message):
@@ -209,6 +234,11 @@ class UserListResponseMessage(Message):
 
         return result
 
+    def __eq__(self, obj):
+        return type(self) == type(obj) and \
+               self.message_type == obj.message_type and \
+               self.user_list.sort() == obj.user_list.sort()
+
 # Wraps an error message string to be sent to the client.
 class ErrorMessage(Message):
     message_type = ERROR_MESSAGE_ID
@@ -223,6 +253,11 @@ class ErrorMessage(Message):
 
     def serialize_payload(self) -> bytes:
         return pack_string(self.error_message)
+
+    def __eq__(self, obj):
+        return type(self) == type(obj) and \
+               self.message_type == obj.message_type and \
+               self.error_message == obj.error_message
 
 # All instantiatable message types
 message_classes = [
