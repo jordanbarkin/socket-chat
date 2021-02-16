@@ -90,7 +90,6 @@ def handle_request(user, conn, message):
         if message.username not in users:
             send_error_message(conn, "Account does not exist.")
         elif users[message.username].is_here():
-            print("DFSADK")
             send_error_message(conn, "You are logged in from a different device")
         else: 
             users[message.username]
@@ -124,6 +123,7 @@ def handle_request(user, conn, message):
         target = message.username.strip()
 
         if target not in users:
+            print(target, users)
             send_error_message(conn, "Recipient user does not exist. Please try again.")
         else:
             print("Received email for ", target)

@@ -22,17 +22,18 @@ looking_for_message = 0
 def check_for_error(num):
     if num == 0:
         return
-
+    
+    output_string = "".join([el for sublist in output for el in sublist])
     failed = False
     # checking for general errors
     if looking_for_message == 0:
-        failed = "".join(output).find("error") != -1
+        failed = output_string.find("error") != -1
     # looking for message content
     elif looking_for_message == 1:
-        failed = "".join(output).find(MAGIC_WORD) == -1
+        failed = output_string.find(MAGIC_WORD) == -1
     # looking for user list
     elif looking_for_message == 2:
-        failed = ("".join(output).find(uname1) == -1 or "".join(output).find(uname1) == -1)
+        failed = (output_string.find(uname2) == -1 or output_string.find(uname1) == -1)
 
     if failed:
         print("test "+str(num)+" failed. aborting")
@@ -84,11 +85,14 @@ def test4():
         return "2"
     if counter == 2:
         counter += 1
-        return uname2
+        return uname1
     if counter == 3:
         counter += 1
         return "2"
     if counter == 4:
+        counter += 1
+        return uname1
+    if counter == 5:
         counter = 0
         test_counter += 1
         looking_for_message = 1
@@ -110,8 +114,23 @@ def test6():
         looking_for_message = 0
         return "4"
 
-# Test on-demand message delivery
+# set up for test 7 by remaking the account
 def test7():
+    global test_counter
+    global counter
+    if counter == 0:
+        counter += 1
+        return "2"
+    if counter == 1:
+        counter += 1 
+        return uname1
+    if counter == 2:
+        counter = 0
+        test_counter += 1
+        return "1"
+
+# Test on-demand message delivery
+def test8():
     global test_counter
     global counter 
     if counter == 0:
