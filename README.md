@@ -13,6 +13,9 @@ The server has very little persistent storage (except a text file containing use
 responsible for all server-side userstate, including login status and message queues. It also relies on `messages.py` our 
 serialization and deserialization library. `messages.py` implements the specification described in `wire_protocol.md`. 
 
+`users.txt` is the server's persistent storage. It is a text file containing all the usernames that the server has seen 
+before. We've initialized it with the following usernames: [lukelavanya, luke, lavanya] (sorry Jordan)
+
 ## Client 
 
 `client.py` contains the code for the client. The client is a command line interface that allows the user to interact 
