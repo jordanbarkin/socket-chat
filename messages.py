@@ -2,7 +2,7 @@ from __future__ import annotations
 from abc import ABC
 import struct
 
-PROTOCOL_VERSION_NUMBER = 1
+PROTOCOL_VERSION_NUMBER      = 1
 
 # Diagnostic Message IDs
 PING_MESSAGE_ID              = 0
@@ -81,7 +81,7 @@ class Message(ABC):
 
     # For testing and validation, we want to be able to compare any two messages
     def __eq__(self, obj):
-        return type(self) == type(obj) and self.message_type == other.message_type
+        return type(self) == type(obj) and self.message_type == obj.message_type
 
 # Represents an empty message that should be responded to with a PongMessage.
 class PingMessage(Message):
@@ -109,9 +109,9 @@ class HereMessage(Message):
         return pack_string(self.username)
 
     def __eq__(self, obj):
-        return type(self) == type(obj) and
-               self.message_type == other.message_type and
-               self.username == other.username
+        return type(self) == type(obj) and \
+               self.message_type == obj.message_type and \
+               self.username == obj.username
 
 # Indicates that a user wants to create an account with name <username>.
 class CreateAccountMessage(Message):
@@ -129,9 +129,9 @@ class CreateAccountMessage(Message):
         return pack_string(self.username)
 
     def __eq__(self, obj):
-        return type(self) == type(obj) and
-               self.message_type == other.message_type and
-               self.username == other.username
+        return type(self) == type(obj) and \
+               self.message_type == obj.message_type and \
+               self.username == obj.username
 
 # Logs a user out.
 class AwayMessage(Message):
@@ -155,9 +155,9 @@ class SendChatMessage(Message):
         return pack_string(self.username) + pack_string(self.body)
 
     def __eq__(self, obj):
-        return type(self) == type(obj) and
-               self.message_type == other.message_type and
-               self.body == other.body
+        return type(self) == type(obj) and \
+               self.message_type == obj.message_type and \
+               self.body == obj.body
 
 # Server will reply with a UserListResponseMessage
 class RequestUserListMessage(Message):
@@ -202,9 +202,9 @@ class DeliverMessage(Message):
         return result
 
     def __eq__(self, obj):
-        return type(self) == type(obj) and
-               self.message_type == other.message_type and
-               self.message_list == other.message_list
+        return type(self) == type(obj) and \
+               self.message_type == obj.message_type and \
+               self.message_list == obj.message_list
 
 # Reply to RequestUserListMessage
 # Contains a list of all users.
@@ -235,9 +235,9 @@ class UserListResponseMessage(Message):
         return result
 
     def __eq__(self, obj):
-        return type(self) == type(obj) and
-               self.message_type == other.message_type and
-               self.user_list == other.user_list
+        return type(self) == type(obj) and \
+               self.message_type == obj.message_type and \
+               self.user_list.sort() == obj.user_list.sort()
 
 # Wraps an error message string to be sent to the client.
 class ErrorMessage(Message):
@@ -255,9 +255,9 @@ class ErrorMessage(Message):
         return pack_string(self.error_message)
 
     def __eq__(self, obj):
-        return type(self) == type(obj) and
-               self.message_type == other.message_type and
-               self.error_message == other.error_message
+        return type(self) == type(obj) and \
+               self.message_type == obj.message_type and \
+               self.error_message == obj.error_message
 
 # All instantiatable message types
 message_classes = [
