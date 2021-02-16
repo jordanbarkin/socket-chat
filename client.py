@@ -192,7 +192,7 @@ def read_message_bytes(sock):
         return None
 
     # if we haven't received a message, nothing to do
-    if not message:
+    if not message or len(message) < 12:
         return None
 
     # read the rest of the message
