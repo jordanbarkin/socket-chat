@@ -71,6 +71,9 @@ class UserState:
     def logout(self):
         self.here = False
 
+    def is_here(self):
+        return self.here
+
 
 
 

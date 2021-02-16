@@ -58,7 +58,9 @@ def read_message(conn):
 
 # package and send <err_msg> to the client on conn
 def send_error_message(conn, err_msg):
+    print("TEST")
     response = ErrorMessage(err_msg)
+    print("SENDING ERROR: ", err_msg)
     conn.send(response.serialize())
 
 # handle a single request from the client.
@@ -86,8 +88,9 @@ def handle_request(user, conn, message):
     elif message_type == HereMessage:
         if message.username not in users:
             send_error_message(conn, "Account does not exist.")
-        elif users[message.username].here:
-            send_error_messsage(conn, "You are logged in from a different device")
+        elif users[message.username].is_here():
+            print("DFSADK")
+            send_error_message(conn, "You are logged in from a different device")
         else: 
             users[message.username]
             user = message.username
@@ -95,7 +98,7 @@ def handle_request(user, conn, message):
 
     # the user is also automatically marked as "here" for the newly created account
     elif message_type == CreateAccountMessage:
-        if message.username in users and users[message.username].here:
+        if message.username in users and users[message.username].is_here():
             send_error_message(conn, "You are logged in from a different device")
         else:
             user = message.username
@@ -183,8 +186,9 @@ def connection_thread(conn):
             if request:
                 try:
                     user = handle_request(user, conn, request)
-                except:
+                except Exception as e:
                     print("Failed to handle request for an unknown reason.")
+                    print(e)
 
 # Read the list of users from the user log and resume the server state
 # with those users.
