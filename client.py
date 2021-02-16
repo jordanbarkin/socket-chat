@@ -61,15 +61,27 @@ def collect_user_input(valid_actions):
 
 # Universal action functions
 
+"""
+    Adds a ping message to the message queue to check connectivity
+    message gets sent by the socket thread
+"""
 def ping():
     payload = messages.PingMessage()
     message_queue.put(payload.serialize())
 
 # Logged out action functions
 
+"""
+    Exits the program when called
+"""
 def program_quit():
     exit("Goodbye!")
 
+"""
+    Asks the user for their username then adds a login request
+    to the message queue. Updates global boolean logged_in 
+    and global string username.
+"""
 def login():
     global logged_in
     global username
@@ -79,7 +91,11 @@ def login():
     logged_in = True
     username = local_username
 
-
+"""
+    Asks the user the name of the account they want to create
+    then adds that request to the message queue. Updates the
+    global boolean logged_in and the global string username
+"""
 def create_account():
     global logged_in
     global username
@@ -98,7 +114,7 @@ LOGIN          = 1
 CREATE_ACCOUNT = 2
 QUIT           = 3
 
-
+# Dict mapping action numbers to action functions
 LOGGED_OUT_ACTIONS = {
     LOGIN: login,
     CREATE_ACCOUNT: create_account,
@@ -108,6 +124,11 @@ LOGGED_OUT_ACTIONS = {
 
 # Logged in action functions
 
+"""
+    Logs the user out, adding an Away Message to the
+    message queue. Updates the global boolean logged_in
+    to False
+"""
 def logout():
     global logged_in
     payload = messages.AwayMessage()
@@ -115,6 +136,10 @@ def logout():
     print_wrapped("Logged out!")
     logged_in = False
 
+"""
+    Prompts the user for a recipient and their message. Places that message on
+    the message queue.
+"""
 def chat_send():
     receiver = input_wrapped("Who do you want to send the message to?: ").strip()
     print_wrapped("Write your message below and press 'enter' to send:")
@@ -123,10 +148,17 @@ def chat_send():
     message_queue.put(payload.serialize())
     print_wrapped("Message sent!")
 
+"""
+    Places a the bytes for a user list request on the message queue
+"""
 def list_users():
     payload = messages.RequestUserListMessage()
     message_queue.put(payload.serialize())
 
+"""
+    Updates global boolean logged_in to False. Places message to 
+    delete account on the message queue
+"""
 def delete_account():
     global logged_in
     payload = messages.DeleteAccountMessage()
@@ -134,6 +166,10 @@ def delete_account():
     print_wrapped("Account deleted!")
     logged_in = False
 
+"""
+    Places a request to show undelivered messages onto the 
+    message queue.
+"""
 def show_messages():
     payload = messages.ShowUndeliveredMessage()
     message_queue.put(payload.serialize())
@@ -145,6 +181,7 @@ LIST_USERS = 3
 DELETE_ACCOUNT = 4
 SHOW_MESSAGES = 5
 
+# Maps actions to their respective functions
 LOGGED_IN_ACTIONS = {
     LOGOUT: logout,
     CHAT_SEND: chat_send,
@@ -165,6 +202,10 @@ def logged_in_sequence():
     if action != -1:
         LOGGED_IN_ACTIONS[action]()
 
+"""
+    Updates the global boolean logged_in and is_connected.
+    Logs the user out and shuts down the connection.
+"""
 def logout(sock):
     global logged_in
     global is_connected
@@ -172,6 +213,10 @@ def logout(sock):
     is_connected = False
     logged_in = False
 
+"""
+    Reads bytes from the socket, timing out after .5 seconds.
+    Returns None if no messages show up, or if it fails.
+"""
 def read_message_bytes(sock):
     # Look to see if any messages showed up.
     try:
@@ -287,7 +332,7 @@ def logged_out_sequence():
     if action != -1:
         LOGGED_OUT_ACTIONS[action]()
 
-
+# Main event loop
 def main():
     global logged_in
     global is_connected
@@ -301,6 +346,7 @@ def main():
             logged_out_sequence()
 
 if __name__ == "__main__":
+    # Adds command-line arguments to specify server and port, as well as to enable testing.
     parser = argparse.ArgumentParser()
     parser.add_argument("-server", help="Server IP address. Defaults to locahost.", default='localhost')
     parser.add_argument("-port", help="Server port. Defaults to 12345.", default=12345)
