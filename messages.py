@@ -26,7 +26,7 @@ ERROR_MESSAGE_ID             = 12
 
 # Pack an int into a byte array.
 def pack_int(val):
-    return struct.Struct("I").pack(val)
+    return struct.Struct("<I").pack(val)
 
 # Pack a string with its length into a byte array.
 def pack_string(val):
@@ -35,7 +35,7 @@ def pack_string(val):
 # Unpack a 4 byte integer off of the front of a byte array.
 # Returns the integer and the rest of the message.
 def unpack_int(buf):
-    num = struct.unpack("I", buf[:4])
+    num = struct.unpack("<I", buf[:4])
     return num[0], buf[4:]
 
 # Unpack a string in our encoding off the front of a byte array.
@@ -49,7 +49,7 @@ def unpack_string(buf):
 
 # Extracts the length of a message, given at *least* its first 12 bytes.
 def extract_length(buf):
-    return struct.unpack("I", buf[8:12])[0]
+    return struct.unpack("<I", buf[8:12])[0]
 
 # Base message abstract class
 # This can never be instantiated, but every message class extends this type.
