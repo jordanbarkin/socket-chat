@@ -2,6 +2,7 @@
 
 import socket
 import threading
+import argparse
 from userstate import *
 from messages import *
 
@@ -197,6 +198,14 @@ def load_users(filename):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-ip", help="Server IP address. Defaults to locahost.", default='localhost')
+    parser.add_argument("-port", help="Server port. Defaults to 12345.", default=12345)
+    args = parser.parse_args()
+
+    HOST = str(args.ip)
+    PORT = int(args.port)
+
     # resume with users if file exists
     try:
         load_users("users.txt")
