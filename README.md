@@ -17,7 +17,7 @@ before. We've initialized it with the following usernames: [lukelavanya, luke, l
 ## Client 
 
 `client.py` contains the code for the client. The client is a command line interface that allows the user to interact 
-with our chat application using keyboard input.
+with our chat application using keyboard input. The client also relies on `messages.py`for protocol serialization and deserialization.
 
 ## Testing
 
