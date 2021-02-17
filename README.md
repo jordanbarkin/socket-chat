@@ -20,8 +20,10 @@ with our chat application using keyboard input. The client also relies on `messa
 
 `integration_tests.py` contains testing code. Client input and output happens through wrapper functions that feed in 
 simulated keyboard input in testing mode. The output function gathers the client's output and sends it to the testing
-library, which thene xamines it for errors. 
+library, which then examines it for errors. 
 
 `messages_unit_tests.py` contains unit tests for the serialization and deserialization library. 
 
-To run all the tests at once, run `python3 client.py -t`
+First, start the server with `python3 server.py`.
+
+Then, to run all the tests at once, run `python3 client.py -t`
